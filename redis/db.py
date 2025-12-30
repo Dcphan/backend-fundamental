@@ -2,12 +2,32 @@ import sqlite3
 from datetime import datetime
 import json
 import random
+import asyncio
 from datetime import datetime, timedelta
 
 class DatabaseTool:
     def __init__(self, fileName):
-        self.conn = sqlite3.connect(fileName)
+        self.conn = sqlite3.connect(fileName, check_same_thread=False)
         self.cursor = self.conn.cursor()
+
+    def __exit__(self, exc_type, exc, tb):
+        # commit if no error, otherwise rollback
+        if exc_type is None:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+        self.close()
+
+    def close(self):
+        # ✅ free locks on Windows
+        try:
+            self.cursor.close()
+        except Exception:
+            pass
+        try:
+            self.conn.close()
+        except Exception:
+            pass
 
     def createTableIfNotExist(self):
         self.cursor.executescript(
@@ -71,26 +91,28 @@ class DatabaseTool:
             print(f"An error occurred: {e}")
 
 
-    def seed_plays(self, num_plays=1000):
-        user_ids = list(range(1, 6))      # users 1–5
-        song_ids = list(range(1, 16))     # songs 1–15
+    def getSong(self, songId: int | None = None, artist: str | None = None):
+            print("Database Call")
+            query = "SELECT title, artist FROM songs WHERE 1=1"
+            params = []
 
-        base_time = datetime.now() - timedelta(days=30)
+            # And it in filter
+            if songId is not None:
+                query += " AND id = ?"
+                params.append(songId)
+            if artist is not None:
+                query += " AND artist = ?"
+                params.append(artist)
 
-        for _ in range(num_plays):
-            user_id = random.choice(user_ids)
-            song_id = random.choice(song_ids)
 
-            # random time in last 30 days
-            played_at = base_time + timedelta(
-                seconds=random.randint(0, 30 * 24 * 3600)
-            )
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
 
-            query = """
-                INSERT INTO plays(user_id, song_id, played_at)
-                VALUES (?, ?, ?)
-            """
-            self.cursor.execute(query, (user_id, song_id, played_at.isoformat()))
+            columns = [desc[0] for desc in self.cursor.description]
 
-        self.conn.commit()
+            return [dict(zip(columns, row)) for row in rows]
+            
+    
+            
+
 
