@@ -7,7 +7,8 @@ class CachingLayer:
 
     def getSongByArtist(self, artist: str):
         data = self.r.get(f"artist_search:{artist.lower()}")
-        return json.loads(data)
+        if data:
+            return json.loads(data)
     
     def setSongByArtist(self, artist: str, songs: list[dict], ttl: int):
         key = f"artist_search:{artist.lower()}"

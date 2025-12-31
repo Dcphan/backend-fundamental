@@ -4,6 +4,8 @@ import json
 import random
 import asyncio
 from datetime import datetime, timedelta
+import base64
+
 
 class DatabaseTool:
     def __init__(self, fileName):
@@ -71,7 +73,7 @@ class DatabaseTool:
         self.cursor.execute(query, (userId, songId, currentTime))   
         self.conn.commit()
         
-
+# Getter
     def getTable(self, table):
         try:
             query = f'''SELECT * FROM {table}'''
@@ -89,6 +91,56 @@ class DatabaseTool:
 
         except sqlite3.Error as e:
             print(f"An error occurred: {e}")
+
+
+# Offset - Limit Pagination
+    def getTable_OL_Pagination(self, table, offset, limit):
+        try:
+            query = f'''SELECT * FROM {table} ORDER BY id LIMIT {limit} OFFSET {offset}'''
+            self.conn.row_factory = sqlite3.Row
+            self.cursor.execute(query)
+            
+            rows = self.cursor.fetchall()
+
+            columns = [desc[0] for desc in self.cursor.description]
+
+            return [dict(zip(columns, row)) for row in rows]
+        
+
+        except sqlite3.Error as e:
+            print(f"Database occurred: {e}")
+
+
+# Cursor Pagination:
+    def getTable_Cursor_Pagination(self, table, limit, cursor):
+        try:
+            query = f'''SELECT * FROM {table}'''
+            if cursor is not None:
+                query += f''' WHERE id > {cursor}'''
+            query += f''' ORDER BY id LIMIT {limit}'''
+
+            print(query)
+            self.conn.row_factory = sqlite3.Row
+
+            self.cursor.execute(query)
+            rows = self.cursor.fetchall()
+
+            columns = [desc[0] for desc in self.cursor.description]
+            items = [dict(zip(columns, row)) for row in rows]
+
+            # Determine the next Cursor
+            cursor = str(items[-1]["id"])
+            byteCursor = cursor.encode("utf-8")
+            b64Cursor = base64.b64encode(byteCursor)
+
+            return {"items": items, "size": len(items), "next": b64Cursor}
+        
+
+        except sqlite3.Error as e:
+            print(f"Database Error: {e}")
+
+
+
 
 
     def getSong(self, songId: int | None = None, artist: str | None = None):

@@ -70,6 +70,18 @@ async def getUser(database: DatabaseTool = Depends(get_db)):
     data = database.getTable("plays")
     return data
 
+@app.get("/plays/OL")
+async def getPlay(offset, limit, database:DatabaseTool = Depends(get_db)):
+    data = database.getTable_OL_Pagination("plays", offset, limit)
+    return data
+
+@app.get("/plays/Cursor")
+async def getPlay(limit: int,
+                  cursor: int | None = None,
+                 database:DatabaseTool = Depends(get_db)):
+    data = database.getTable_Cursor_Pagination("plays", limit, cursor)
+    return data
+
 
 @app.get("/songs/noncache")
 async def getSongWithoutCache(
@@ -78,7 +90,7 @@ async def getSongWithoutCache(
     database: DatabaseTool = Depends(get_db)
 ):
     print("FastAPI call")
-    data = database.getSong(songId=id, artist= artist)
+    data = database.getSong(songId=id, artist=artist)
     return data
 
 @app.get("/songs/cache")
